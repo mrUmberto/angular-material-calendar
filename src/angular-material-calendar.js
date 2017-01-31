@@ -13,12 +13,12 @@ angular.module("materialCalendar").config(["materialCalendar.config", "$logProvi
 }]);
 
 angular.module("materialCalendar").directive("compile", ["$compile", function ($compile) {
-    return function(scope, element, attrs) {
+    return function (scope, element, attrs) {
         scope.$watch(
-            function(scope) {
+            function (scope) {
                 return scope.$eval(attrs.compile);
             },
-            function(value) {
+            function (value) {
                 element.html(value);
                 $compile(element.contents())(scope);
             }
@@ -54,7 +54,7 @@ angular.module("materialCalendar").service("materialCalendar.Calendar", [functio
 
         this.setNoOfDays = function (i) {
             var d = parseInt(i || 0, 10);
-            if (!isNaN(d) && d > 0 ) {
+            if (!isNaN(d) && d > 0) {
                 this.noOfDays = d;
             } else {
                 this.noOfDays = 0;
@@ -104,21 +104,21 @@ angular.module("materialCalendar").service("materialCalendar.Calendar", [functio
             }
 
             // First day of calendar month.
-            if ( angular.isDefined(this.options.startDateOfMonth) ) {
+            if (angular.isDefined(this.options.startDateOfMonth)) {
                 this.start = new Date(this.year, this.month, this.startDateOfMonth);
             } else {
                 this.start = new Date(this.year, this.month, 1);
             }
 
             var date = angular.copy(this.start);
-            if ( date.getDate() === 1) {
-                while ( date.getDay() !== this.weekStartsOn) {
+            if (date.getDate() === 1) {
+                while (date.getDay() !== this.weekStartsOn) {
                     date.setDate(date.getDate() - 1);
                     monthLength++;
                 }
             }
 
-            if ( this.noOfDays !== 0) {
+            if (this.noOfDays !== 0) {
                 while (this.noOfDays % 7 !== 0) {
                     this.noOfDays++;
                 }
@@ -167,14 +167,21 @@ angular.module("materialCalendar").service("MaterialCalendarData", [function () 
 
         this.data = {};
 
-        this.getDayKey = function(date) {
+
+        this.getDayKey = function (date) {
             return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join("-");
         };
 
-        this.setDayContent = function(date, content) {
-            this.data[this.getDayKey(date)] = content || "";
+        this.setDayContent = function (date, content) {
+            if (Array.isArray(content)){
+                this.data[this.getDayKey(date)] = content;
+            }
+            else if (this.data[this.getDayKey(date)]){
+                this.data[this.getDayKey(date)].push(content);
+            }
         };
     }
+
     return new CalendarData();
 }]);
 
@@ -263,15 +270,21 @@ angular.module("materialCalendar").directive("calendarMd", ["$compile", "$parse"
                     d.getMonth() === $scope.calendar.month;
             };
 
-            $scope.isDisabled = function (date,startDateOfMonth,noOfDays) {
-                if (noOfDays!=0 && angular.isDefined(noOfDays)) {
-                    var dateStart = new Date($scope.calendar.year,$scope.calendar.month,startDateOfMonth);
+            $scope.isDisabled = function (date, startDateOfMonth, noOfDays) {
+                if (noOfDays != 0 && angular.isDefined(noOfDays)) {
+                    var dateStart = new Date($scope.calendar.year, $scope.calendar.month, startDateOfMonth);
                     var dateEnd = angular.copy(dateStart);
-                    dateEnd.setDate(dateStart.getDate()+parseInt(noOfDays));
-                    if (date.getDate() <= dateStart && date.getDate() >= dateEnd) { return true; }
+                    dateEnd.setDate(dateStart.getDate() + parseInt(noOfDays));
+                    if (date.getDate() <= dateStart && date.getDate() >= dateEnd) {
+                        return true;
+                    }
                 }
-                if ($scope.disableSelection) { return true; }
-                if ($scope.disableFutureSelection && date > new Date()) { return true; }
+                if ($scope.disableSelection) {
+                    return true;
+                }
+                if ($scope.disableFutureSelection && date > new Date()) {
+                    return true;
+                }
                 return !$scope.sameMonth(date);
             };
 
@@ -318,7 +331,7 @@ angular.module("materialCalendar").directive("calendarMd", ["$compile", "$parse"
 
             $scope.hasEvents = function (date) {
                 var data = CalendarData.data[$scope.dayKey(date)];
-                return (data && data.length > 0);
+                return data.length > 0;
             };
 
             $scope.prev = function () {
@@ -343,11 +356,11 @@ angular.module("materialCalendar").directive("calendarMd", ["$compile", "$parse"
 
             $scope.handleDayClick = function (date) {
 
-                if($scope.disableFutureSelection && date > new Date()) {
+                if ($scope.disableFutureSelection && date > new Date()) {
                     return;
                 }
 
-                if($scope.disableSelection) {
+                if ($scope.disableSelection) {
                     return;
                 }
 
@@ -399,8 +412,6 @@ angular.module("materialCalendar").directive("calendarMd", ["$compile", "$parse"
             };
 
 
-
-
             $scope.dataService = CalendarData;
 
             // Set the html contents of each date.
@@ -413,27 +424,10 @@ angular.module("materialCalendar").directive("calendarMd", ["$compile", "$parse"
 
                 // Initialize the data in the data array.
                 if ($scope.noCache) {
-                    $scope.dataService.setDayContent(date, "");
+                    $scope.dataService.setDayContent(date, []);
                 } else {
-                    $scope.dataService.setDayContent(date, ($scope.dataService.data[getDayKey(date)] || ""));
+                    $scope.dataService.setDayContent(date, ($scope.dataService.data[getDayKey(date)] || []));
                 }
-
-                var cb = ($scope.dayContent || angular.noop)();
-                var result = (cb || angular.noop)(date);
-
-                // Check for async function. This should support $http.get() and also regular $q.defer() functions.
-                if (angular.isObject(result) && "function" === typeof result.success) {
-                    result.success(function (html) {
-                        $scope.dataService.setDayContent(date, html);
-                    });
-                } else if (angular.isObject(result) && "function" === typeof result.then) {
-                    result.then(function (html) {
-                        $scope.dataService.setDayContent(date, html);
-                    });
-                } else {
-                    $scope.dataService.setDayContent(date, result);
-                }
-
             };
 
             var setData = function () {
@@ -451,7 +445,7 @@ angular.module("materialCalendar").directive("calendarMd", ["$compile", "$parse"
                 });
             };
 
-            $scope.$watchGroup(["weekStartsOn","startDateOfMonth","noOfDays"], init);
+            $scope.$watchGroup(["weekStartsOn", "startDateOfMonth", "noOfDays"], init);
             bootstrap();
 
             // These are for tests, don't remove them..
